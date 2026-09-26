@@ -1,8 +1,6 @@
-from arq import cron
 from arq.connections import RedisSettings
 from sqlalchemy import select
 
-from app.ai.llm import OpenAICompatibleGenerator
 from app.core.config import get_settings
 from app.core.crypto import decrypt_secret
 from app.db import SessionLocal
@@ -48,7 +46,7 @@ async def process_message(ctx: dict, message_id: str) -> None:
                     message_type="text",
                     whatsapp_message_id=response_message_id,
                     text=reply,
-                    metadata={"source": "ai"},
+                    extra_metadata={"source": "ai"},
                 )
             )
         await db.commit()
