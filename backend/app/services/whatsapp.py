@@ -26,9 +26,17 @@ class WhatsAppClient:
         expected = "sha256=" + hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
         return hmac.compare_digest(expected, signature_header)
 
-    async def send_text(self, *, phone_number_id: str, recipient: str, text: str) -> dict[str, Any]:
-        if not self.settings.whatsapp_access_token:
-            raise WhatsAppAPIError("WHATSAPP_ACCESS_TOKEN is not configured")
+    async def send_text(
+        self,
+        *,
+        phone_number_id: str,
+        recipient: str,
+        text: str,
+        access_token: str | None = None,
+    ) -> dict[str, Any]:
+        token = access_token or self.settings.whatsapp_access_token
+        if not token:
+            raise WhatsAppAPIError("No WhatsApp access token is configured")
 
         url = f"{self.base_url}/{phone_number_id}/messages"
         payload = {
@@ -39,7 +47,7 @@ class WhatsAppClient:
             "text": {"preview_url": False, "body": text},
         }
         headers = {
-            "Authorization": f"Bearer {self.settings.whatsapp_access_token}",
+            "Authorization": f"Bearer {token}",
             "Content-Type": "application/json",
         }
 
