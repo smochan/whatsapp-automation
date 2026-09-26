@@ -113,7 +113,7 @@ async def receive_webhook(
         message_type="text",
         whatsapp_message_id=external_id,
         text=message["text"],
-        metadata={"raw": message["raw"]},
+        extra_metadata={"raw": message["raw"]},
         created_at=received_at,
     )
     db.add(inbound)
