@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     api_prefix: str = "/api/v1"
 
     database_url: str
+    token_encryption_key: str = ""
 
     whatsapp_verify_token: str = ""
     whatsapp_access_token: str = ""
