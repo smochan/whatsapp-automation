@@ -4,7 +4,7 @@ from datetime import datetime
 
 from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db import Base
 
@@ -100,7 +100,7 @@ class Message(Base):
     message_type: Mapped[str] = mapped_column(String(40))
     whatsapp_message_id: Mapped[str] = mapped_column(String(160))
     text: Mapped[str | None] = mapped_column(Text, nullable=True)
-    metadata: Mapped[dict] = mapped_column(JSONB, default=dict)
+    extra_metadata: Mapped[dict] = mapped_column("metadata", JSONB, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
@@ -111,7 +111,7 @@ class KnowledgeDocument(Base):
     organization_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("organizations.id", ondelete="CASCADE"))
     title: Mapped[str] = mapped_column(String(300))
     content: Mapped[str] = mapped_column(Text)
-    metadata: Mapped[dict] = mapped_column(JSONB, default=dict)
+    extra_metadata: Mapped[dict] = mapped_column("metadata", JSONB, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
@@ -145,7 +145,7 @@ class Package(Base):
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     inclusions: Mapped[list] = mapped_column(JSONB, default=list)
     exclusions: Mapped[list] = mapped_column(JSONB, default=list)
-    metadata: Mapped[dict] = mapped_column(JSONB, default=dict)
+    extra_metadata: Mapped[dict] = mapped_column("metadata", JSONB, default=dict)
     active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
@@ -163,5 +163,18 @@ class Booking(Base):
     currency: Mapped[str] = mapped_column(String(3), default="INR")
     payment_status: Mapped[str] = mapped_column(String(40), default="pending")
     status: Mapped[BookingStatus] = mapped_column(Enum(BookingStatus, name="booking_status"), default=BookingStatus.pending)
-    metadata: Mapped[dict] = mapped_column(JSONB, default=dict)
+    extra_metadata: Mapped[dict] = mapped_column("metadata", JSONB, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class WebhookEvent(Base):
+    __tablename__ = "webhook_events"
+    __table_args__ = (UniqueConstraint("provider", "external_event_id", name="uq_webhook_provider_event"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    provider: Mapped[str] = mapped_column(String(40))
+    external_event_id: Mapped[str] = mapped_column(String(255))
+    event_type: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    payload: Mapped[dict] = mapped_column(JSONB)
+    processed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
