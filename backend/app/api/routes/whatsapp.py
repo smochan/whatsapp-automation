@@ -8,6 +8,7 @@ from app.core.config import get_settings
 from app.db import get_db
 from app.models import Conversation, Customer, Message, MessageDirection, WhatsAppAccount, WebhookEvent
 from app.services.whatsapp import WhatsAppClient, extract_text_message
+from app.workers.queue import enqueue_message_processing
 
 router = APIRouter(prefix="/webhooks/whatsapp", tags=["whatsapp"])
 
@@ -59,7 +60,6 @@ async def receive_webhook(
         )
     )
     if not account:
-        # Still record the event so an unexpected/unconfigured number is visible.
         db.add(
             WebhookEvent(
                 provider="whatsapp",
@@ -107,17 +107,16 @@ async def receive_webhook(
     conversation.last_customer_message_at = received_at
     conversation.window_expires_at = received_at + timedelta(hours=24)
 
-    db.add(
-        Message(
-            conversation_id=conversation.id,
-            direction=MessageDirection.inbound,
-            message_type="text",
-            whatsapp_message_id=external_id,
-            text=message["text"],
-            metadata={"raw": message["raw"]},
-            created_at=received_at,
-        )
+    inbound = Message(
+        conversation_id=conversation.id,
+        direction=MessageDirection.inbound,
+        message_type="text",
+        whatsapp_message_id=external_id,
+        text=message["text"],
+        metadata={"raw": message["raw"]},
+        created_at=received_at,
     )
+    db.add(inbound)
     db.add(
         WebhookEvent(
             provider="whatsapp",
@@ -129,6 +128,5 @@ async def receive_webhook(
     )
     await db.commit()
 
-    # AI orchestration is intentionally decoupled from webhook ingestion. The
-    # next worker will consume this conversation/message and run Laya + tools.
-    return {"status": "accepted"}
+    queued = await enqueue_message_processing(str(inbound.id))
+    return {"status": "queued" if queued else "stored"}
