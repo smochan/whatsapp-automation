@@ -1,3 +1,5 @@
+import uuid
+
 from arq.connections import RedisSettings
 from sqlalchemy import select
 
@@ -10,9 +12,10 @@ from app.services.whatsapp import WhatsAppClient
 
 
 async def process_message(ctx: dict, message_id: str) -> None:
+    message_uuid = uuid.UUID(message_id)
     async with SessionLocal() as db:
         orchestrator = ConversationOrchestrator()
-        reply = await orchestrator.handle_message(db, message_id)
+        reply = await orchestrator.handle_message(db, message_uuid)
         if not reply:
             return
 
@@ -21,7 +24,7 @@ async def process_message(ctx: dict, message_id: str) -> None:
             .join(Conversation, Message.conversation_id == Conversation.id)
             .join(Customer, Conversation.customer_id == Customer.id)
             .join(WhatsAppAccount, Conversation.whatsapp_account_id == WhatsAppAccount.id)
-            .where(Message.id == message_id)
+            .where(Message.id == message_uuid)
         )
         record = row.one_or_none()
         if not record:
