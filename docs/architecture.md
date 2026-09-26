@@ -12,14 +12,30 @@ Customer
   -> Meta Cloud API webhook
   -> FastAPI ingestion
   -> PostgreSQL/Supabase
-  -> background orchestration
+  -> Redis/ARQ worker
   -> Laya router
   -> business tools / knowledge retrieval
   -> low-cost LLM when generation is required
   -> WhatsApp Cloud API
 ```
 
-The webhook endpoint should remain fast and idempotent. It persists the event/message and returns 200; AI work belongs in a background worker.
+The webhook endpoint should remain fast and idempotent. It persists the event/message and returns 200; AI work runs in the background worker.
+
+## Local processes
+
+API:
+
+```bash
+uvicorn app.main:app --reload
+```
+
+Worker:
+
+```bash
+arq app.workers.message_worker.WorkerSettings
+```
+
+Both processes use the same backend image in deployment; the worker is a separate service/process.
 
 ## Tenancy
 
@@ -31,7 +47,7 @@ Every inbound customer message refreshes `window_expires_at` to 24 hours after t
 
 ## AI boundary
 
-Laya is an orchestration/router dependency, not the source of truth. It decides intent and routing. Tools retrieve authoritative package, booking, customer and knowledge data. The LLM receives only the minimum relevant context needed to generate a response.
+Laya is an orchestration/router dependency, not the source of truth. It decides intent and routing. Tools retrieve authoritative package, booking, customer and knowledge data. The LLM receives only the minimum relevant context needed to generate a response. If no authoritative context is found, the current orchestrator refuses to generate a business-fact answer rather than hallucinating.
 
 ## Future TripSynk integration
 
